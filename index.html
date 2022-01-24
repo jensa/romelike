@@ -334,22 +334,6 @@
           troops.sort((a, b) => b.x - a.x);
           troops.sort((a, b) => (a.enemy ? (b.enemy ? 0 : 1) : -1));
           console.log(troops);
-          for (let i = 0; i < troops.length; i++) {
-            let troop = troops[i];
-            for (let j = 0; j < troop.attackPattern.length; j++) {
-              let p = troop.attackPattern[j];
-              const newPos = { x: troop.x + p.x, y: troop.y + p.y };
-              let troopAtGridPoint = troops.find(
-                (t) => t.x === newPos.x && t.y === newPos.y
-              );
-              //attack!
-              if (troopAtGridPoint) {
-                troops = troops.filter(
-                  (t) => t.x !== newPos.x || t.y !== newPos.y
-                );
-              }
-            }
-          }
 
           //move all troops
           for (let i = 0; i < troops.length; i++) {
@@ -363,6 +347,23 @@
               if (!troopAtGridPoint) {
                 troop.x = newPos.x;
                 troop.y = newPos.y;
+              }
+            }
+          }
+
+          for (let i = 0; i < troops.length; i++) {
+            let troop = troops[i];
+            for (let j = 0; j < troop.attackPattern.length; j++) {
+              let p = troop.attackPattern[j];
+              const newPos = { x: troop.x + p.x, y: troop.y + p.y };
+              let troopAtGridPoint = troops.find(
+                (t) => t.x === newPos.x && t.y === newPos.y
+              );
+              //attack!
+              if (troopAtGridPoint) {
+                troops = troops.filter(
+                  (t) => t.x !== newPos.x || t.y !== newPos.y
+                );
               }
             }
           }
