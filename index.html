@@ -75,8 +75,8 @@
             overlainTroopBox.movePattern.forEach((moveSquare) => {
               ctx.fillStyle = "rgb(200,200,200,0.3)";
               let movePos = {
-                x: overlainTroopBox.x + moveSquare.x,
-                y: overlainTroopBox.y + moveSquare.y,
+                x: overlainTroopBox.x + lastXmod + moveSquare.x,
+                y: overlainTroopBox.y + lastYmod + moveSquare.y,
               };
               console.log(movePos);
               let pixelPos = grid2Pixel(movePos);
@@ -88,7 +88,7 @@
             });
 
             overlainTroopBox.attackPattern.forEach((attackSquare) => {
-              ctx.fillStyle = "rgb(255,0,0,0.9)";
+              ctx.fillStyle = "rgb(255,0,0,0.5)";
               let attackPos = grid2Pixel({
                 x: overlainTroopBox.x + lastXmod + attackSquare.x,
                 y: overlainTroopBox.y + lastYmod + attackSquare.y,
@@ -159,7 +159,7 @@
               attackPattern: [{ x: 0, y: -1 }],
               movePattern: [
                 { x: 0, y: -1 },
-                { x: 0, y: -2 },
+                { x: 0, y: -1 },
               ],
             };
           }
@@ -190,12 +190,9 @@
           let y = gridPos.y * 100 + 10;
           return { x: x, y: y };
         }
-        function writeMessage(canvas, message) {
+        function writeMessage(canvas) {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           render();
-          ctx.font = "18pt Calibri";
-          ctx.fillStyle = "black";
-          ctx.fillText(message, 10, 25);
         }
 
         function getMousePos(canvas, evt) {
@@ -234,8 +231,7 @@
               }
               //check grid and paint overlay(s)
             }
-            var message = "Mouse position: " + mousePos.x + "," + mousePos.y;
-            writeMessage(canvas, message);
+            writeMessage(canvas);
           },
           false
         );
@@ -278,8 +274,7 @@
                 currentstate = "choose_card";
               }
             }
-            var message = "Mouse position: " + mousePos.x + "," + mousePos.y;
-            writeMessage(canvas, message);
+            writeMessage(canvas);
           },
           false
         );
