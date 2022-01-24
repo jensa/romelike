@@ -29,8 +29,34 @@
         let overlainGridBox;
         let overlainTroopBox;
         let troops = [
-          { enemy: true, x: 2, y: 0, name: "Axeman" },
-          { enemy: true, x: 4, y: 0, name: "Knight" },
+          {
+            enemy: true,
+            name: "Legion",
+            attackPattern: [{ x: 0, y: 1 }],
+            movePattern: [{ x: 0, y: 1 }],
+            x: 0,
+            y: 0,
+          },
+          {
+            enemy: true,
+            name: "Archer",
+            attackPattern: [{ x: 0, y: 2 }],
+            movePattern: [{ x: 0, y: 1 }],
+            x: 2,
+            y: 0,
+          },
+          {
+            enemy: true,
+            name: "Knight",
+            attackPattern: [{ x: 0, y: 1 }],
+            movePattern: [
+              { x: 0, y: 1 },
+              { x: 0, y: 1 },
+              { x: 0, y: 1 },
+            ],
+            x: 4,
+            y: 0,
+          },
         ];
         let cards = [
           makeCard("legion"),
@@ -78,11 +104,9 @@
                 x: overlainTroopBox.x + lastXmod + moveSquare.x,
                 y: overlainTroopBox.y + lastYmod + moveSquare.y,
               };
-              console.log(movePos);
               let pixelPos = grid2Pixel(movePos);
               lastXmod += moveSquare.x;
               lastYmod += moveSquare.y;
-              console.log(pixelPos);
 
               ctx.fillRect(pixelPos.x, pixelPos.y, 100, 100);
             });
@@ -93,7 +117,6 @@
                 x: overlainTroopBox.x + lastXmod + attackSquare.x,
                 y: overlainTroopBox.y + lastYmod + attackSquare.y,
               });
-              console.log(attackPos);
               ctx.fillRect(attackPos.x, attackPos.y, 100, 100);
             });
           }
@@ -190,7 +213,7 @@
           let y = gridPos.y * 100 + 10;
           return { x: x, y: y };
         }
-        function writeMessage(canvas) {
+        function cleanAndRender(canvas) {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           render();
         }
@@ -213,6 +236,16 @@
             overlainTroopBox = undefined;
             if (gridBox) {
               overlainGridBox = { ...gridBox, color: "rgb(255,0,0,0.3)" };
+              //check if there is a troop here. if so, do the overlain troop box
+              let troopAtGridPoint = troops.find(
+                (t) => t.x === gridBox.x && t.y === gridBox.y
+              );
+              if (troopAtGridPoint) {
+                overlainTroopBox = {
+                  ...overlainGridBox,
+                  ...troopAtGridPoint,
+                };
+              }
             }
 
             if (currentstate === "consider_card") {
@@ -231,7 +264,7 @@
               }
               //check grid and paint overlay(s)
             }
-            writeMessage(canvas);
+            cleanAndRender(canvas);
           },
           false
         );
@@ -242,7 +275,6 @@
               return { ...d, filled: false };
             });
             var mousePos = getMousePos(canvas, evt);
-            console.log(selectedCard);
             //what state are we in?
             if (currentstate === "choose_card") {
               selectedCard = undefined;
@@ -260,13 +292,15 @@
                 selectedCard = drawn[card];
               } else if (grid) {
                 if (grid.y === 4 && selectedCard) {
-                  console.log("add troop");
                   troops.push({
                     enemy: false,
                     ...selectedCard,
                     ...grid,
                   });
                   drawn.splice(card, 1);
+
+                  nextTurn();
+                  return;
                 }
                 currentstate = "choose_card";
               } else {
@@ -274,10 +308,28 @@
                 currentstate = "choose_card";
               }
             }
-            writeMessage(canvas);
+            cleanAndRender(canvas);
           },
           false
         );
+
+        function nextTurn() {
+          discard = [...discard, ...drawn];
+          drawCards(ctx, cards, discard);
+
+          //move all troops
+          for (let i = 0; i < troops.length; i++) {
+            let troop = troops[i];
+            let newX = troop.movePattern.reduce((a, p) => a + p.x, 0);
+            let newY = troop.movePattern.reduce((a, p) => a + p.y, 0);
+            console.log(newX + "," + newY);
+            troop.x += newX;
+            troop.y += newY;
+          }
+
+          currentstate = "choose_card";
+          cleanAndRender(canvas);
+        }
 
         function gridIndex(x, y) {
           if (y > 10 && y < 510 && x > 10 && x < 510) {
