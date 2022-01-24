@@ -52,7 +52,6 @@
             movePattern: [
               { x: 0, y: 1 },
               { x: 0, y: 1 },
-              { x: 0, y: 1 },
             ],
             x: 4,
             y: 0,
@@ -86,6 +85,9 @@
             ctx.stroke();
             ctx.fillStyle = "black";
             ctx.fillText(troop.name, pos.x + 20, pos.y + 40);
+            if (troop.enemy) {
+              renderPattern(troop);
+            }
           });
           if (overlainTroopBox) {
             let pos = grid2Pixel(overlainTroopBox);
@@ -95,31 +97,42 @@
             ctx.stroke();
             ctx.fillStyle = "black";
             ctx.fillText(overlainTroopBox.name, pos.x + 20, pos.y + 40);
-
-            let lastXmod = 0;
-            let lastYmod = 0;
-            overlainTroopBox.movePattern.forEach((moveSquare) => {
-              ctx.fillStyle = "rgb(200,200,200,0.3)";
-              let movePos = {
-                x: overlainTroopBox.x + lastXmod + moveSquare.x,
-                y: overlainTroopBox.y + lastYmod + moveSquare.y,
-              };
-              let pixelPos = grid2Pixel(movePos);
-              lastXmod += moveSquare.x;
-              lastYmod += moveSquare.y;
-
-              ctx.fillRect(pixelPos.x, pixelPos.y, 100, 100);
-            });
-
-            overlainTroopBox.attackPattern.forEach((attackSquare) => {
-              ctx.fillStyle = "rgb(255,0,0,0.5)";
-              let attackPos = grid2Pixel({
-                x: overlainTroopBox.x + lastXmod + attackSquare.x,
-                y: overlainTroopBox.y + lastYmod + attackSquare.y,
-              });
-              ctx.fillRect(attackPos.x, attackPos.y, 100, 100);
-            });
+            renderPattern(overlainTroopBox);
           }
+        }
+
+        function renderPattern(overlainTroopBox) {
+          let pos = grid2Pixel(overlainTroopBox);
+          ctx.strokeStyle = "blue";
+          ctx.beginPath();
+          ctx.rect(pos.x + 10, pos.y + 10, 80, 80);
+          ctx.stroke();
+          ctx.fillStyle = "black";
+          ctx.fillText(overlainTroopBox.name, pos.x + 20, pos.y + 40);
+
+          let lastXmod = 0;
+          let lastYmod = 0;
+          overlainTroopBox.movePattern.forEach((moveSquare) => {
+            ctx.fillStyle = "rgb(200,200,200,0.3)";
+            let movePos = {
+              x: overlainTroopBox.x + lastXmod + moveSquare.x,
+              y: overlainTroopBox.y + lastYmod + moveSquare.y,
+            };
+            let pixelPos = grid2Pixel(movePos);
+            lastXmod += moveSquare.x;
+            lastYmod += moveSquare.y;
+
+            ctx.fillRect(pixelPos.x, pixelPos.y, 100, 100);
+          });
+
+          overlainTroopBox.attackPattern.forEach((attackSquare) => {
+            ctx.fillStyle = "rgb(255,0,0,0.5)";
+            let attackPos = grid2Pixel({
+              x: overlainTroopBox.x + lastXmod + attackSquare.x,
+              y: overlainTroopBox.y + lastYmod + attackSquare.y,
+            });
+            ctx.fillRect(attackPos.x, attackPos.y, 100, 100);
+          });
         }
 
         function renderDrawn(ctx, drawn) {
@@ -317,14 +330,41 @@
           discard = [...discard, ...drawn];
           drawCards(ctx, cards, discard);
 
+          //attack with all troops
+          troops.sort((a, b) => b.x - a.x);
+          troops.sort((a, b) => (a.enemy ? (b.enemy ? 0 : 1) : -1));
+          console.log(troops);
+          for (let i = 0; i < troops.length; i++) {
+            let troop = troops[i];
+            for (let j = 0; j < troop.attackPattern.length; j++) {
+              let p = troop.attackPattern[j];
+              const newPos = { x: troop.x + p.x, y: troop.y + p.y };
+              let troopAtGridPoint = troops.find(
+                (t) => t.x === newPos.x && t.y === newPos.y
+              );
+              //attack!
+              if (troopAtGridPoint) {
+                troops = troops.filter(
+                  (t) => t.x !== newPos.x || t.y !== newPos.y
+                );
+              }
+            }
+          }
+
           //move all troops
           for (let i = 0; i < troops.length; i++) {
             let troop = troops[i];
-            let newX = troop.movePattern.reduce((a, p) => a + p.x, 0);
-            let newY = troop.movePattern.reduce((a, p) => a + p.y, 0);
-            console.log(newX + "," + newY);
-            troop.x += newX;
-            troop.y += newY;
+            for (let j = 0; j < troop.movePattern.length; j++) {
+              let p = troop.movePattern[j];
+              const newPos = { x: troop.x + p.x, y: troop.y + p.y };
+              let troopAtGridPoint = troops.find(
+                (t) => t.x === newPos.x && t.y === newPos.y
+              );
+              if (!troopAtGridPoint) {
+                troop.x = newPos.x;
+                troop.y = newPos.y;
+              }
+            }
           }
 
           currentstate = "choose_card";
