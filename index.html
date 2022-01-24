@@ -1,0 +1,324 @@
+<html>
+  <body>
+    <div style="width: 100%; text-align: center">
+      <canvas
+        style="margin-left: auto; margin-right: auto"
+        id="canvas"
+        width="600"
+        height="900"
+      >
+      </canvas>
+    </div>
+    <script type="text/javascript">
+      window.onload = function () {
+        var canvas = document.getElementById("canvas");
+        var ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // draw the grid empty (maybe with enemies?)
+        //how the game loop works:
+        // draw 5 cards
+        // when card is chosen, draw overlay on the bottom grid row and the card's attack pattern
+        // when one of the bottom grid squares is chosen, draw the cards unit on that square
+        // your guys attack, then move (?)
+        // let enemies attack, then move, the draw 5 new cards
+        const states = ["choose_card", "consider_card", "other"];
+        let currentstate = states[0];
+        let drawn = [];
+        let selectedCard;
+        let discard = [];
+        let overlainGridBox;
+        let overlainTroopBox;
+        let troops = [
+          { enemy: true, x: 2, y: 0 },
+          { enemy: true, x: 4, y: 0 },
+        ];
+        let cards = [
+          makeCard("legion"),
+          makeCard("legion"),
+          makeCard("archer"),
+          makeCard("legion"),
+          makeCard("archer"),
+          makeCard("shield"),
+          makeCard("legion"),
+          makeCard("berserk"),
+        ];
+        shuffleArray(cards);
+        drawCards(ctx, cards, discard);
+        render();
+        function render() {
+          renderDrawn(ctx, drawn);
+          renderTroops(troops);
+          drawGrid(ctx);
+        }
+
+        function renderTroops(troops) {
+          troops.forEach((troop) => {
+            let pos = grid2Pixel(troop);
+            ctx.strokeStyle = troop.enemy ? "purple" : "green";
+            ctx.beginPath();
+            ctx.rect(pos.x + 10, pos.y + 10, 80, 80);
+            ctx.stroke();
+            ctx.fillStyle = "black";
+            ctx.fillText(troop.name, pos.x + 20, pos.y + 40);
+          });
+          if (overlainTroopBox) {
+            let pos = grid2Pixel(overlainTroopBox);
+            ctx.strokeStyle = "blue";
+            ctx.beginPath();
+            ctx.rect(pos.x + 10, pos.y + 10, 80, 80);
+            ctx.stroke();
+            ctx.fillStyle = "black";
+            ctx.fillText(overlainTroopBox.name, pos.x + 20, pos.y + 40);
+
+            let lastXmod = 0;
+            let lastYmod = 0;
+            overlainTroopBox.movePattern.forEach((moveSquare) => {
+              ctx.fillStyle = "rgb(200,200,200,0.3)";
+              let movePos = {
+                x: overlainTroopBox.x + moveSquare.x,
+                y: overlainTroopBox.y + moveSquare.y,
+              };
+              console.log(movePos);
+              let pixelPos = grid2Pixel(movePos);
+              lastXmod += moveSquare.x;
+              lastYmod += moveSquare.y;
+              console.log(pixelPos);
+
+              ctx.fillRect(pixelPos.x, pixelPos.y, 100, 100);
+            });
+
+            overlainTroopBox.attackPattern.forEach((attackSquare) => {
+              ctx.fillStyle = "rgb(255,0,0,0.9)";
+              let attackPos = grid2Pixel({
+                x: overlainTroopBox.x + lastXmod + attackSquare.x,
+                y: overlainTroopBox.y + lastYmod + attackSquare.y,
+              });
+              console.log(attackPos);
+              ctx.fillRect(attackPos.x, attackPos.y, 100, 100);
+            });
+          }
+        }
+
+        function renderDrawn(ctx, drawn) {
+          ctx.font = "15px Arial";
+          ctx.strokeStyle = "red";
+          ctx.lineWidth = "1";
+          drawn.forEach((card, i) => {
+            const x = i * 100 + 30;
+            ctx.strokeStyle = card.filled ? "red" : "black";
+            ctx.beginPath();
+            ctx.rect(x, 520, 60, 100);
+            ctx.stroke();
+            ctx.strokeStyle = "black";
+            ctx.fillStyle = "black";
+            ctx.fillText(card.name, x + 10, 550);
+          });
+        }
+
+        function drawCards(ctx, cards, discard) {
+          if (cards.length > 4) {
+            drawn = cards.splice(0, 5);
+          } else {
+            drawn = cards.splice(0, cards.length);
+            cards = [...discard];
+            shuffleArray(cards);
+            drawn = [...drawn, ...cards.splice(0, 5 - drawn.length)];
+          }
+        }
+        function shuffleArray(array) {
+          for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+          }
+        }
+        function makeCard(n) {
+          if (n === "legion") {
+            return {
+              name: n,
+              attackPattern: [{ x: 0, y: -1 }],
+              movePattern: [{ x: 0, y: -1 }],
+            };
+          }
+          if (n === "archer") {
+            return {
+              name: n,
+              attackPattern: [{ x: 0, y: -2 }],
+              movePattern: [{ x: 0, y: -1 }],
+            };
+          }
+          if (n === "shield") {
+            return {
+              name: n,
+              attackPattern: [],
+              movePattern: [{ x: 0, y: -1 }],
+            };
+          }
+          if (n === "berserk") {
+            return {
+              name: n,
+              attackPattern: [{ x: 0, y: -1 }],
+              movePattern: [
+                { x: 0, y: -1 },
+                { x: 0, y: -2 },
+              ],
+            };
+          }
+        }
+        function drawGrid(ctx) {
+          ctx.strokeStyle = "black";
+          for (let x = 10; x < 700; x += 100) {
+            ctx.beginPath();
+            ctx.moveTo(x, 10);
+            ctx.lineTo(x, 510);
+            ctx.stroke();
+          }
+          for (let y = 10; y < 520; y += 100) {
+            ctx.beginPath();
+            ctx.moveTo(10, y);
+            ctx.lineTo(510, y);
+            ctx.stroke();
+          }
+          if (overlainGridBox) {
+            let pos = grid2Pixel(overlainGridBox);
+            ctx.fillStyle = overlainGridBox.color;
+            ctx.fillRect(pos.x, pos.y, 100, 100);
+          }
+        }
+
+        function grid2Pixel(gridPos) {
+          let x = gridPos.x * 100 + 10;
+          let y = gridPos.y * 100 + 10;
+          return { x: x, y: y };
+        }
+        function writeMessage(canvas, message) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          render();
+          ctx.font = "18pt Calibri";
+          ctx.fillStyle = "black";
+          ctx.fillText(message, 10, 25);
+        }
+
+        function getMousePos(canvas, evt) {
+          var rect = canvas.getBoundingClientRect();
+          return {
+            x: evt.clientX - rect.left,
+            y: evt.clientY - rect.top,
+          };
+        }
+
+        canvas.addEventListener(
+          "mousemove",
+          function (evt) {
+            var mousePos = getMousePos(canvas, evt);
+            //what state are we in?
+            let gridBox = gridIndex(mousePos.x, mousePos.y);
+            overlainGridBox = undefined;
+            overlainTroopBox = undefined;
+            if (gridBox) {
+              overlainGridBox = { ...gridBox, color: "rgb(255,0,0,0.3)" };
+            }
+
+            if (currentstate === "consider_card") {
+              //CHECK GRID AND PLACE
+              if (gridBox) {
+                overlainTroopBox = {
+                  ...overlainGridBox,
+                  ...selectedCard,
+                };
+                if (gridBox.y === 4) {
+                  overlainGridBox = {
+                    ...overlainGridBox,
+                    color: "rgb(0,255,0,0.3)",
+                  };
+                }
+              }
+              //check grid and paint overlay(s)
+            }
+            var message = "Mouse position: " + mousePos.x + "," + mousePos.y;
+            writeMessage(canvas, message);
+          },
+          false
+        );
+        canvas.addEventListener(
+          "mousedown",
+          function (evt) {
+            drawn = drawn.map((d) => {
+              return { ...d, filled: false };
+            });
+            var mousePos = getMousePos(canvas, evt);
+            console.log(selectedCard);
+            //what state are we in?
+            if (currentstate === "choose_card") {
+              selectedCard = undefined;
+              let card = cardIndex(mousePos.x, mousePos.y);
+              if (card === 0 || card) {
+                drawn[card] = { ...drawn[card], filled: true };
+                currentstate = "consider_card";
+                selectedCard = drawn[card];
+              }
+            } else if (currentstate === "consider_card") {
+              let card = cardIndex(mousePos.x, mousePos.y);
+              let grid = gridIndex(mousePos.x, mousePos.y);
+              if (card === 0 || card) {
+                drawn[card] = { ...drawn[card], filled: true };
+                selectedCard = drawn[card];
+              } else if (grid) {
+                if (grid.y === 4 && selectedCard) {
+                  console.log("add troop");
+                  troops.push({
+                    enemy: false,
+                    ...selectedCard,
+                    ...grid,
+                  });
+                  drawn.splice(card, 1);
+                }
+                currentstate = "choose_card";
+              } else {
+                selectedCard = undefined;
+                currentstate = "choose_card";
+              }
+            }
+            var message = "Mouse position: " + mousePos.x + "," + mousePos.y;
+            writeMessage(canvas, message);
+          },
+          false
+        );
+
+        function gridIndex(x, y) {
+          if (y > 10 && y < 510 && x > 10 && x < 510) {
+            // find row
+            let row, column;
+            for (let i = 0; i < 5; i++) {
+              let rowStart = i * 100 + 10;
+              let rowEnd = rowStart + 100;
+              if (y > rowStart && y < rowEnd) {
+                row = i;
+              }
+            }
+            for (let i = 0; i < 5; i++) {
+              let colStart = i * 100 + 10;
+              let colEnd = colStart + 100;
+              if (x > colStart && x < colEnd) {
+                column = i;
+              }
+            }
+            return { x: column, y: row };
+          }
+        }
+
+        function cardIndex(x, y) {
+          if (y > 520 && y < 620) {
+            const width = 60;
+            for (let i = 0; i < drawn.length; i++) {
+              let leftSide = i * 100 + 30;
+              let rightSide = leftSide + 60;
+              if (x > leftSide && x < rightSide) {
+                return i;
+              }
+            }
+          }
+        }
+      };
+    </script>
+  </body>
+</html>
