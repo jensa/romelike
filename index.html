@@ -36,24 +36,26 @@
         let gameOverText;
         let troops = [];
         let cards = [
+          makeCard("catapult", false),
+          makeCard("catapult", false),
           makeCard("legion", false),
           makeCard("legion", false),
-          makeCard("archer", false),
           makeCard("legion", false),
-          makeCard("archer", false),
+          makeCard("legion", false),
+          makeCard("archer(l)", false),
+          makeCard("archer(r)", false),
           makeCard("shield", false),
-          makeCard("legion", false),
           makeCard("berserk", false),
         ];
 
         let enemyCards = [
+          makeCard("legion", true),
+          makeCard("legion", true),
+          makeCard("legion", true),
+          makeCard("archer(l)", true),
+          makeCard("archer(r)", true),
           makeCard("knight", true),
-          makeCard("legion", true),
-          makeCard("archer", true),
-          makeCard("legion", true),
-          makeCard("archer", true),
           makeCard("shield", true),
-          makeCard("legion", true),
           makeCard("berserk", true),
         ];
 
@@ -123,9 +125,14 @@
             let pixelPos = grid2Pixel(movePos);
             lastXmod += moveSquare.x;
             lastYmod += moveSquare.y;
-            if (!overlainTroopBox.enemy) {
+            if (
+              !overlainTroopBox.enemy &&
+              movePos.y >= 0 &&
+              movePos.x >= 0 &&
+              movePos.x < 5
+            ) {
               ctx.fillRect(pixelPos.x, pixelPos.y, 100, 100);
-            } else if (movePos.y < 5) {
+            } else if (movePos.y < 5 && movePos.x >= 0 && movePos.x < 5) {
               ctx.fillRect(pixelPos.x, pixelPos.y, 100, 100);
             }
           });
@@ -140,9 +147,14 @@
               x: overlainTroopBox.x + lastXmod + attackSquare.x,
               y: overlainTroopBox.y + lastYmod + attackSquare.y,
             });
-            if (!overlainTroopBox.enemy) {
+            if (
+              !overlainTroopBox.enemy &&
+              attackPos.y >= 0 &&
+              attackPos.x >= 0 &&
+              attackPos.x < 5
+            ) {
               ctx.fillRect(attackPixelPos.x, attackPixelPos.y, 100, 100);
-            } else if (attackPos.y < 5) {
+            } else if (attackPos.y < 5 && attackPos.x >= 0 && attackPos.x < 5) {
               ctx.fillRect(attackPixelPos.x, attackPixelPos.y, 100, 100);
             }
           });
@@ -204,21 +216,29 @@
           }
         }
         function makeCard(n, enemy) {
-          let factor = enemy ? -1 : 1;
+          let factor = enemy ? 1 : -1;
           if (n === "legion") {
             return {
               enemy: enemy,
               name: n,
-              attackPattern: [{ x: 0, y: -1 * factor }],
-              movePattern: [{ x: 0, y: -1 * factor }],
+              attackPattern: [{ x: 0, y: 1 * factor }],
+              movePattern: [{ x: 0, y: 1 * factor }],
             };
           }
-          if (n === "archer") {
+          if (n === "archer(l)") {
             return {
               enemy: enemy,
               name: n,
-              attackPattern: [{ x: 0, y: -2 * factor }],
-              movePattern: [{ x: 0, y: -1 * factor }],
+              attackPattern: [{ x: -1, y: 2 * factor }],
+              movePattern: [{ x: 0, y: 1 * factor }],
+            };
+          }
+          if (n === "archer(r)") {
+            return {
+              enemy: enemy,
+              name: n,
+              attackPattern: [{ x: 1, y: 2 * factor }],
+              movePattern: [{ x: 0, y: 1 * factor }],
             };
           }
           if (n === "shield") {
@@ -226,17 +246,17 @@
               enemy: enemy,
               name: n,
               attackPattern: [],
-              movePattern: [{ x: 0, y: -1 * factor }],
+              movePattern: [{ x: 0, y: 1 * factor }],
             };
           }
           if (n === "berserk") {
             return {
               enemy: enemy,
               name: n,
-              attackPattern: [{ x: 0, y: -1 * factor }],
+              attackPattern: [{ x: 0, y: 1 * factor }],
               movePattern: [
-                { x: 0, y: -1 * factor },
-                { x: 0, y: -1 * factor },
+                { x: 0, y: 1 * factor },
+                { x: 0, y: 1 * factor },
               ],
             };
           }
@@ -244,11 +264,23 @@
             return {
               enemy: enemy,
               name: n,
-              attackPattern: [{ x: 0, y: -1 * factor }],
+              attackPattern: [{ x: 0, y: 1 * factor }],
               movePattern: [
-                { x: 0, y: -1 * factor },
-                { x: 0, y: -1 * factor },
+                { x: 0, y: 1 * factor },
+                { x: 0, y: 1 * factor },
               ],
+            };
+          }
+          if (n === "catapult") {
+            return {
+              enemy: enemy,
+              name: n,
+              attackPattern: [
+                { x: -1, y: 3 * factor },
+                { x: 0, y: 3 * factor },
+                { x: 1, y: 3 * factor },
+              ],
+              movePattern: [{ x: 0, y: 1 * factor }],
             };
           }
         }
