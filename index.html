@@ -29,6 +29,9 @@
         let combatLog = [];
         let overlainGridBox;
         let overlainTroopBox;
+        let enemyHp = 10;
+        let yourHp = 10;
+        let gameOverText;
         let troops = [
           {
             enemy: true,
@@ -75,6 +78,15 @@
           renderDrawn(ctx, drawn);
           renderTroops(troops);
           drawGrid(ctx);
+          renderEndOfGame();
+        }
+
+        function renderEndOfGame() {
+          if (gameOverText) {
+            ctx.font = "100px Arial";
+            ctx.fillStyle = "red";
+            ctx.fillText(gameOverText, 100, 200);
+          }
         }
 
         function renderTroops(troops) {
@@ -225,11 +237,12 @@
           ctx.fillStyle = "white";
           ctx.fillText("next turn", 610 + 20, 200 + 40);
           combatLog.splice(0, combatLog.length - 3);
-          console.log(combatLog);
           ctx.fillStyle = "black";
           combatLog.forEach((s, i) => {
-            ctx.fillText(s, 580, 320 + i * 20);
+            ctx.fillText(s, 520, 320 + i * 20);
           });
+          ctx.fillText("HP: " + enemyHp, 520, 50);
+          ctx.fillText("HP: " + yourHp, 520, 500);
         }
 
         function grid2Pixel(gridPos) {
@@ -304,7 +317,6 @@
               mousePos.y > 200 &&
               mousePos.y < 300
             ) {
-              console.log("next turn");
               nextTurn();
               return;
             }
@@ -353,11 +365,64 @@
           //attack with all troops
           troops.sort((a, b) => b.x - a.x);
           troops.sort((a, b) => (a.enemy ? (b.enemy ? 0 : 1) : -1));
-          console.log(troops);
-          await moveTroops(troops.filter((t) => t.enemy));
-          await moveTroops(troops.filter((t) => !t.enemy));
+          await moveAndAttackTroops(troops.filter((t) => t.enemy));
+          if (yourHp < 1) {
+            endGame();
+            return;
+          }
+          await moveAndAttackTroops(troops.filter((t) => !t.enemy));
+          if (enemyHp < 1) {
+            endGame();
+            return;
+          }
           currentstate = "choose_card";
           cleanAndRender(canvas);
+        }
+
+        function endGame() {
+          gameOverText = yourHp < 1 ? "YOU LOSE" : "YOU WIN";
+          cleanAndRender(canvas);
+        }
+
+        async function moveAndAttackTroops(theseTroops) {
+          await attackTroops(theseTroops);
+          await moveTroops(theseTroops);
+        }
+
+        async function attackTroops(theseTroops) {
+          const timer = () => new Promise((res) => setTimeout(res, 300));
+
+          for (let i = 0; i < theseTroops.length; i++) {
+            let troop = theseTroops[i];
+            let enemyDamage = enemyDamageFromPos(troop, troop);
+            for (let j = 0; j < troop.attackPattern.length; j++) {
+              let p = troop.attackPattern[j];
+              const newPos = { x: troop.x + p.x, y: troop.y + p.y };
+              let troopAtGridPoint = troops.find(
+                (t) => t.x === newPos.x && t.y === newPos.y
+              );
+              //attack!
+              if (troopAtGridPoint) {
+                troops = troops.filter(
+                  (t) => t.x !== newPos.x || t.y !== newPos.y
+                );
+                combatLog.push("Killed " + troopAtGridPoint.name);
+                cleanAndRender(canvas);
+                await timer();
+              }
+            }
+            if (enemyDamage > 0) {
+              if (troop.enemy) {
+                yourHp -= enemyDamage;
+                combatLog.push("you: " + enemyDamage + " dmg");
+              } else {
+                enemyHp -= enemyDamage;
+                combatLog.push("enemy: " + enemyDamage + " dmg");
+              }
+              cleanAndRender(canvas);
+              await timer();
+            }
+          }
         }
 
         async function moveTroops(theseTroops) {
@@ -372,7 +437,8 @@
               let troopAtGridPoint = troops.find(
                 (t) => t.x === newPos.x && t.y === newPos.y
               );
-              if (!troopAtGridPoint) {
+              let enemyInRange = enemyDamageFromPos(troop, troop) > 0;
+              if (!troopAtGridPoint && !enemyInRange) {
                 troop.x = newPos.x;
                 troop.y = newPos.y;
               }
@@ -380,26 +446,22 @@
               await timer();
             }
           }
+        }
 
-          for (let i = 0; i < theseTroops.length; i++) {
-            let troop = theseTroops[i];
-            for (let j = 0; j < troop.attackPattern.length; j++) {
-              let p = troop.attackPattern[j];
-              const newPos = { x: troop.x + p.x, y: troop.y + p.y };
-              let troopAtGridPoint = troops.find(
-                (t) => t.x === newPos.x && t.y === newPos.y
-              );
-              //attack!
-              if (troopAtGridPoint) {
-                troops = troops.filter(
-                  (t) => t.x !== newPos.x || t.y !== newPos.y
-                );
-                cleanAndRender(canvas);
-                combatLog.push("killed " + troopAtGridPoint.name);
-                await timer();
+        function enemyDamageFromPos(troop, position) {
+          // if this troop is at position, can it hit the enemy?
+          // i.e how many of its hit boxes have y > 4?
+          return troop.attackPattern
+            .map((p) => {
+              let yPos = position.y + p.y;
+              let hit = troop.enemy ? yPos > 4 : yPos < 0;
+              if (hit) {
+                console.log(troop);
+                console.log(position);
               }
-            }
-          }
+              return hit ? 1 : 0;
+            })
+            .reduce((a, p) => a + p, 0);
         }
 
         function gridIndex(x, y) {
