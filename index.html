@@ -24,55 +24,44 @@
         const states = ["choose_card", "consider_card", "other"];
         let currentstate = states[0];
         let drawn = [];
+        let enemyDrawn = [];
         let selectedCard;
         let discard = [];
+        let enemyDiscard = [];
         let combatLog = [];
         let overlainGridBox;
         let overlainTroopBox;
         let enemyHp = 10;
         let yourHp = 10;
         let gameOverText;
-        let troops = [
-          {
-            enemy: true,
-            name: "Legion",
-            attackPattern: [{ x: 0, y: 1 }],
-            movePattern: [{ x: 0, y: 1 }],
-            x: 0,
-            y: 0,
-          },
-          {
-            enemy: true,
-            name: "Archer",
-            attackPattern: [{ x: 0, y: 2 }],
-            movePattern: [{ x: 0, y: 1 }],
-            x: 2,
-            y: 0,
-          },
-          {
-            enemy: true,
-            name: "Knight",
-            attackPattern: [{ x: 0, y: 1 }],
-            movePattern: [
-              { x: 0, y: 1 },
-              { x: 0, y: 1 },
-            ],
-            x: 4,
-            y: 0,
-          },
-        ];
+        let troops = [];
         let cards = [
-          makeCard("legion"),
-          makeCard("legion"),
-          makeCard("archer"),
-          makeCard("legion"),
-          makeCard("archer"),
-          makeCard("shield"),
-          makeCard("legion"),
-          makeCard("berserk"),
+          makeCard("legion", false),
+          makeCard("legion", false),
+          makeCard("archer", false),
+          makeCard("legion", false),
+          makeCard("archer", false),
+          makeCard("shield", false),
+          makeCard("legion", false),
+          makeCard("berserk", false),
         ];
+
+        let enemyCards = [
+          makeCard("knight", true),
+          makeCard("legion", true),
+          makeCard("archer", true),
+          makeCard("legion", true),
+          makeCard("archer", true),
+          makeCard("shield", true),
+          makeCard("legion", true),
+          makeCard("berserk", true),
+        ];
+
         shuffleArray(cards);
+        shuffleArray(enemyCards);
         drawCards(ctx, cards, discard);
+        drawEnemyCards();
+        placeEnemyTroops();
         render();
         function render() {
           renderDrawn(ctx, drawn);
@@ -134,17 +123,28 @@
             let pixelPos = grid2Pixel(movePos);
             lastXmod += moveSquare.x;
             lastYmod += moveSquare.y;
-
-            ctx.fillRect(pixelPos.x, pixelPos.y, 100, 100);
+            if (!overlainTroopBox.enemy) {
+              ctx.fillRect(pixelPos.x, pixelPos.y, 100, 100);
+            } else if (movePos.y < 5) {
+              ctx.fillRect(pixelPos.x, pixelPos.y, 100, 100);
+            }
           });
 
           overlainTroopBox.attackPattern.forEach((attackSquare) => {
             ctx.fillStyle = "rgb(255,0,0,0.5)";
-            let attackPos = grid2Pixel({
+            let attackPos = {
+              x: overlainTroopBox.x + lastXmod + attackSquare.x,
+              y: overlainTroopBox.y + lastYmod + attackSquare.y,
+            };
+            let attackPixelPos = grid2Pixel({
               x: overlainTroopBox.x + lastXmod + attackSquare.x,
               y: overlainTroopBox.y + lastYmod + attackSquare.y,
             });
-            ctx.fillRect(attackPos.x, attackPos.y, 100, 100);
+            if (!overlainTroopBox.enemy) {
+              ctx.fillRect(attackPixelPos.x, attackPixelPos.y, 100, 100);
+            } else if (attackPos.y < 5) {
+              ctx.fillRect(attackPixelPos.x, attackPixelPos.y, 100, 100);
+            }
           });
         }
 
@@ -152,6 +152,7 @@
           ctx.font = "15px Arial";
           ctx.strokeStyle = "red";
           ctx.lineWidth = "1";
+          drawn.sort((a, b) => a.order - b.order);
           drawn.forEach((card, i) => {
             const x = i * 100 + 30;
             ctx.strokeStyle = card.filled ? "red" : "black";
@@ -173,42 +174,80 @@
             shuffleArray(cards);
             drawn = [...drawn, ...cards.splice(0, 5 - drawn.length)];
           }
+          drawn = drawn.map((d, i) => {
+            return { ...d, order: i };
+          });
         }
+
+        function drawEnemyCards() {
+          if (enemyCards.length > 4) {
+            enemyDrawn = enemyCards.splice(0, 5);
+          } else {
+            enemyDrawn = enemyCards.splice(0, enemyCards.length);
+            enemyCards = [...enemyDiscard];
+            enemyDiscard = [];
+            shuffleArray(enemyCards);
+            enemyDrawn = [
+              ...enemyDrawn,
+              ...enemyCards.splice(0, 5 - enemyDrawn.length),
+            ];
+          }
+          enemyDrawn = enemyDrawn.map((d, i) => {
+            return { ...d, order: i };
+          });
+        }
+
         function shuffleArray(array) {
           for (let i = array.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [array[i], array[j]] = [array[j], array[i]];
           }
         }
-        function makeCard(n) {
+        function makeCard(n, enemy) {
+          let factor = enemy ? -1 : 1;
           if (n === "legion") {
             return {
+              enemy: enemy,
               name: n,
-              attackPattern: [{ x: 0, y: -1 }],
-              movePattern: [{ x: 0, y: -1 }],
+              attackPattern: [{ x: 0, y: -1 * factor }],
+              movePattern: [{ x: 0, y: -1 * factor }],
             };
           }
           if (n === "archer") {
             return {
+              enemy: enemy,
               name: n,
-              attackPattern: [{ x: 0, y: -2 }],
-              movePattern: [{ x: 0, y: -1 }],
+              attackPattern: [{ x: 0, y: -2 * factor }],
+              movePattern: [{ x: 0, y: -1 * factor }],
             };
           }
           if (n === "shield") {
             return {
+              enemy: enemy,
               name: n,
               attackPattern: [],
-              movePattern: [{ x: 0, y: -1 }],
+              movePattern: [{ x: 0, y: -1 * factor }],
             };
           }
           if (n === "berserk") {
             return {
+              enemy: enemy,
               name: n,
-              attackPattern: [{ x: 0, y: -1 }],
+              attackPattern: [{ x: 0, y: -1 * factor }],
               movePattern: [
-                { x: 0, y: -1 },
-                { x: 0, y: -1 },
+                { x: 0, y: -1 * factor },
+                { x: 0, y: -1 * factor },
+              ],
+            };
+          }
+          if (n === "knight") {
+            return {
+              enemy: enemy,
+              name: n,
+              attackPattern: [{ x: 0, y: -1 * factor }],
+              movePattern: [
+                { x: 0, y: -1 * factor },
+                { x: 0, y: -1 * factor },
               ],
             };
           }
@@ -345,7 +384,10 @@
                     ...selectedCard,
                     ...grid,
                   });
-                  drawn.splice(card, 1);
+                  let selectedCardIndex = drawn.findIndex(
+                    (d) => d.order === selectedCard.order
+                  );
+                  discard.push(drawn.splice(selectedCardIndex, 1)[0]);
                 }
                 currentstate = "choose_card";
               } else {
@@ -358,10 +400,22 @@
           false
         );
 
-        async function nextTurn() {
-          discard = [...discard, ...drawn];
-          drawCards(ctx, cards, discard);
+        function placeEnemyTroops() {
+          let troopsToPlace = enemyDrawn.splice(0, 3);
+          troopsToPlace.forEach((enemyCard, i) => {
+            let index = i === 0 ? 0 : i === 1 ? 2 : 4;
+            troops.push({ ...enemyCard, x: index, y: 0 });
+          });
+          enemyDiscard.push(...troopsToPlace);
+        }
 
+        async function nextTurn() {
+          console.log(enemyDrawn);
+          console.log(enemyDiscard);
+          discard = [...discard, ...drawn];
+          enemyDiscard = [...enemyDiscard, ...enemyDrawn];
+          drawCards(ctx, cards, discard);
+          drawEnemyCards();
           //attack with all troops
           troops.sort((a, b) => b.x - a.x);
           troops.sort((a, b) => (a.enemy ? (b.enemy ? 0 : 1) : -1));
@@ -375,6 +429,7 @@
             endGame();
             return;
           }
+          placeEnemyTroops();
           currentstate = "choose_card";
           cleanAndRender(canvas);
         }
@@ -455,10 +510,6 @@
             .map((p) => {
               let yPos = position.y + p.y;
               let hit = troop.enemy ? yPos > 4 : yPos < 0;
-              if (hit) {
-                console.log(troop);
-                console.log(position);
-              }
               return hit ? 1 : 0;
             })
             .reduce((a, p) => a + p, 0);
